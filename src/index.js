@@ -107,6 +107,8 @@ function handlePrivateDryRunMessage(message) {
 
 async function main() {
   const config = readConfig();
+  console.log(`Starting bot${config.dryRun ? " (DRY_RUN mode)" : ""}...`);
+
   const bot = new Telegraf(config.telegramBotToken);
   const sheets = config.dryRun ? null : await createSheetsClient(config);
 
@@ -129,7 +131,11 @@ async function main() {
     }
   });
 
-  await bot.launch({ allowedUpdates: ["channel_post", "message"] });
+  bot.launch({ allowedUpdates: ["channel_post", "message"] }).catch((error) => {
+    console.error("[fatal] bot.launch failed:", error);
+    process.exit(1);
+  });
+
   console.log(`Bot is running${config.dryRun ? " in DRY_RUN mode" : ""}.`);
 
   process.once("SIGINT", () => bot.stop("SIGINT"));
