@@ -52,7 +52,7 @@ async function createSheetsClient(config) {
 
   const credentials = parseServiceAccountJson(config.googleServiceAccountJson);
   if (credentials) authOptions.credentials = credentials;
-  if (config.googleApplicationCredentials) authOptions.keyFile = config.googleApplicationCredentials;
+  else if (config.googleApplicationCredentials) authOptions.keyFile = config.googleApplicationCredentials;
 
   if (!authOptions.credentials && !authOptions.keyFile) {
     throw new Error("Set GOOGLE_APPLICATION_CREDENTIALS or GOOGLE_SERVICE_ACCOUNT_JSON");
