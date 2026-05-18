@@ -1,0 +1,16 @@
+{
+  "name": "tg-lead-sender",
+  "version": "1.0.0",
+  "description": "Telegram channel lead collector that appends parsed leads to Google Sheets.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "googleapis": "^144.0.0",
+    "telegraf": "^4.16.3"
+  },
+  "devDependencies": {}
+}
