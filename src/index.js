@@ -121,13 +121,23 @@ async function main() {
   });
 
   bot.on("message", async (ctx) => {
-    if (ctx.chat?.type !== "private") return;
-    if (!config.dryRun) return;
+    const chatType = ctx.chat?.type;
 
-    try {
-      handlePrivateDryRunMessage(ctx.message);
-    } catch (error) {
-      console.error("[error] failed to handle private test message:", error);
+    if (chatType === "group" || chatType === "supergroup") {
+      try {
+        await handleLeadPost(ctx.message, config, sheets);
+      } catch (error) {
+        console.error("[error] failed to handle group message:", error);
+      }
+      return;
+    }
+
+    if (chatType === "private" && config.dryRun) {
+      try {
+        handlePrivateDryRunMessage(ctx.message);
+      } catch (error) {
+        console.error("[error] failed to handle private test message:", error);
+      }
     }
   });
 
