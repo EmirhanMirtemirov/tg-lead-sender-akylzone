@@ -71,7 +71,7 @@ async function appendLeadRow(client, config, row) {
   return client.sheets.spreadsheets.values.append({
     spreadsheetId: client.spreadsheetId,
     range: config.sheetRange,
-    valueInputOption: "USER_ENTERED",
+    valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
       values: [row],
