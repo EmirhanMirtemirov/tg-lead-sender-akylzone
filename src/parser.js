@@ -81,16 +81,22 @@ function parseLeadMessage(text) {
     (key) => key.includes("grade"),
   ]);
 
+  const name = findByKey(fields, [
+    (key) => key.includes("имя"),
+    (key) => key.includes("name"),
+  ]);
+
   const lead = {
     phone: normalizePhone(phone),
     grade: cleanValue(grade),
+    name: cleanValue(name) || "Не указано",
     time: extractTime(messageText),
     context: extractContext(messageText),
     channel: extractChannel(messageText),
   };
 
   lead.isComplete = Boolean(lead.phone && lead.grade && lead.time && lead.context);
-  lead.row = [lead.phone, lead.grade, lead.time, lead.context];
+  lead.row = ["", lead.time, lead.channel, lead.name, lead.phone, lead.grade, lead.context];
 
   return lead;
 }

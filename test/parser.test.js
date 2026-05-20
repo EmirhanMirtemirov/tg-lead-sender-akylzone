@@ -22,16 +22,31 @@ test("parses the Fusion AI lead message format", () => {
 
   assert.equal(lead.phone, "+996 550 404 536");
   assert.equal(lead.grade, "7-класс");
+  assert.equal(lead.name, "Не указано");
   assert.equal(lead.time, "2026-05-18 18:28");
   assert.equal(lead.channel, "instagram");
   assert.match(lead.context, /мама ребенка/);
   assert.equal(lead.isComplete, true);
   assert.deepEqual(lead.row, [
+    "",
+    "2026-05-18 18:28",
+    "instagram",
+    "Не указано",
     "+996 550 404 536",
     "7-класс",
-    "2026-05-18 18:28",
     lead.context,
   ]);
+});
+
+test("captures client name when the message includes one", () => {
+  const withName = sample.replace(
+    "   - номер телефона: 0550404536",
+    "   - имя клиента: Айгерим\n   - номер телефона: 0550404536",
+  );
+  const lead = parseLeadMessage(withName);
+
+  assert.equal(lead.name, "Айгерим");
+  assert.equal(lead.row[3], "Айгерим");
 });
 
 test("normalizes common Kyrgyzstan phone formats", () => {

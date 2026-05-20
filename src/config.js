@@ -24,7 +24,7 @@ function readConfig() {
     spreadsheetId: process.env.SPREADSHEET_ID || "",
     spreadsheetName: process.env.SPREADSHEET_NAME || "",
     sheetName,
-    sheetRange: process.env.SHEET_RANGE || `${sheetName || "Лист1"}!A:D`,
+    sheetRange: process.env.SHEET_RANGE || `${sheetName || "Лист1"}!A:G`,
     googleApplicationCredentials: process.env.GOOGLE_APPLICATION_CREDENTIALS || "",
     googleServiceAccountJson: process.env.GOOGLE_SERVICE_ACCOUNT_JSON || "",
     dryRun: readBoolean("DRY_RUN", false),
