@@ -111,6 +111,23 @@ async function handlePrivateLead(message, config, sheets) {
   console.log(`[ok] appended forwarded lead ${lead.phone} / ${lead.grade}`);
 }
 
+async function launchWithConflictRetry(bot) {
+  const retryMs = 15000;
+
+  while (true) {
+    try {
+      await bot.launch({ allowedUpdates: ["channel_post", "message"] });
+      return;
+    } catch (error) {
+      if (error?.response?.error_code !== 409) throw error;
+      console.error(
+        `[warn] polling conflict (409): another bot instance is active — retrying in ${retryMs / 1000}s`,
+      );
+      await new Promise((resolve) => setTimeout(resolve, retryMs));
+    }
+  }
+}
+
 async function main() {
   const config = readConfig();
   console.log(`Starting bot${config.dryRun ? " (DRY_RUN mode)" : ""}...`);
@@ -147,12 +164,12 @@ async function main() {
     }
   });
 
-  bot.launch({ allowedUpdates: ["channel_post", "message"] }).catch((error) => {
-    console.error("[fatal] bot.launch failed:", error);
+  console.log(`Bot is running${config.dryRun ? " in DRY_RUN mode" : ""}.`);
+
+  launchWithConflictRetry(bot).catch((error) => {
+    console.error("[fatal] bot stopped:", error?.description || error?.message || String(error));
     process.exit(1);
   });
-
-  console.log(`Bot is running${config.dryRun ? " in DRY_RUN mode" : ""}.`);
 
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
