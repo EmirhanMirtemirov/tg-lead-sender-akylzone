@@ -4,8 +4,45 @@ require("dotenv").config();
 
 const { Telegraf } = require("telegraf");
 const { readConfig } = require("./config");
-const { createSheetsClient, appendLeadRow } = require("./googleSheets");
+const { createSheetsClient, appendLeadRows } = require("./googleSheets");
 const { parseLeadMessage } = require("./parser");
+
+const FLUSH_DELAY_MS = 2000;
+const MAX_BATCH = 100;
+
+// Buffers parsed rows and writes them to the sheet in one batched append,
+// so a burst of forwarded messages stays well under Google's write quota.
+function createRowQueue(config, sheets) {
+  const pending = [];
+  let timer = null;
+
+  async function flush() {
+    timer = null;
+    if (pending.length === 0) return;
+    const batch = pending.splice(0, pending.length);
+    try {
+      await appendLeadRows(sheets, config, batch);
+      console.log(`[ok] appended ${batch.length} lead(s) to the sheet`);
+    } catch (error) {
+      console.error(
+        `[error] failed to append ${batch.length} lead(s):`,
+        error?.message || String(error),
+      );
+    }
+  }
+
+  function add(row) {
+    pending.push(row);
+    if (timer) clearTimeout(timer);
+    if (pending.length >= MAX_BATCH) {
+      flush();
+      return;
+    }
+    timer = setTimeout(flush, FLUSH_DELAY_MS);
+  }
+
+  return { add };
+}
 
 function textOf(message) {
   return message.text || message.caption || "";
@@ -60,15 +97,14 @@ function isAllowedSource(message, config) {
   };
 }
 
-async function handleLeadPost(message, config, sheets) {
+function handleLeadPost(message, config, queue) {
   const source = isAllowedSource(message, config);
   if (!source.ok) {
     console.log(`[skip] ${source.reason}`);
     return;
   }
 
-  const text = textOf(message);
-  const lead = parseLeadMessage(text);
+  const lead = parseLeadMessage(textOf(message));
 
   if (!lead.isComplete) {
     console.log("[skip] message does not contain a complete lead", {
@@ -85,11 +121,10 @@ async function handleLeadPost(message, config, sheets) {
     return;
   }
 
-  await appendLeadRow(sheets, config, lead.row);
-  console.log(`[ok] appended lead ${lead.phone} / ${lead.grade}`);
+  queue.add(lead.row);
 }
 
-async function handlePrivateLead(message, config, sheets) {
+function handlePrivateLead(message, config, queue) {
   const lead = parseLeadMessage(textOf(message));
 
   if (!lead.isComplete) {
@@ -107,8 +142,7 @@ async function handlePrivateLead(message, config, sheets) {
     return;
   }
 
-  await appendLeadRow(sheets, config, lead.row);
-  console.log(`[ok] appended forwarded lead ${lead.phone} / ${lead.grade}`);
+  queue.add(lead.row);
 }
 
 async function launchWithConflictRetry(bot) {
@@ -134,33 +168,27 @@ async function main() {
 
   const bot = new Telegraf(config.telegramBotToken);
   const sheets = config.dryRun ? null : await createSheetsClient(config);
+  const queue = createRowQueue(config, sheets);
 
-  bot.on("channel_post", async (ctx) => {
+  bot.on("channel_post", (ctx) => {
     try {
-      await handleLeadPost(ctx.channelPost, config, sheets);
+      handleLeadPost(ctx.channelPost, config, queue);
     } catch (error) {
-      console.error("[error] failed to handle channel post:", error);
+      console.error("[error] failed to handle channel post:", error?.message || String(error));
     }
   });
 
-  bot.on("message", async (ctx) => {
+  bot.on("message", (ctx) => {
     const chatType = ctx.chat?.type;
 
-    if (chatType === "group" || chatType === "supergroup") {
-      try {
-        await handleLeadPost(ctx.message, config, sheets);
-      } catch (error) {
-        console.error("[error] failed to handle group message:", error);
+    try {
+      if (chatType === "group" || chatType === "supergroup") {
+        handleLeadPost(ctx.message, config, queue);
+      } else if (chatType === "private") {
+        handlePrivateLead(ctx.message, config, queue);
       }
-      return;
-    }
-
-    if (chatType === "private") {
-      try {
-        await handlePrivateLead(ctx.message, config, sheets);
-      } catch (error) {
-        console.error("[error] failed to handle private message:", error);
-      }
+    } catch (error) {
+      console.error("[error] failed to handle message:", error?.message || String(error));
     }
   });
 

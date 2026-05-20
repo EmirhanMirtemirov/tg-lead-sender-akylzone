@@ -67,19 +67,19 @@ async function createSheetsClient(config) {
   };
 }
 
-async function appendLeadRow(client, config, row) {
+async function appendLeadRows(client, config, rows) {
   return client.sheets.spreadsheets.values.append({
     spreadsheetId: client.spreadsheetId,
     range: config.sheetRange,
     valueInputOption: "RAW",
     insertDataOption: "INSERT_ROWS",
     requestBody: {
-      values: [row],
+      values: rows,
     },
   });
 }
 
 module.exports = {
   createSheetsClient,
-  appendLeadRow,
+  appendLeadRows,
 };
