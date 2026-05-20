@@ -101,7 +101,29 @@ function parseLeadMessage(text) {
   return lead;
 }
 
+// Row column E (index 4) holds the phone; see the lead.row layout above.
+const PHONE_COLUMN_INDEX = 4;
+
+function dedupeRows(rows, existingPhones) {
+  const seen = new Set();
+  const unique = [];
+  let duplicates = 0;
+
+  for (const row of rows) {
+    const key = normalizePhone(row[PHONE_COLUMN_INDEX]);
+    if (existingPhones.has(key) || seen.has(key)) {
+      duplicates += 1;
+      continue;
+    }
+    seen.add(key);
+    unique.push(row);
+  }
+
+  return { unique, duplicates };
+}
+
 module.exports = {
   parseLeadMessage,
   normalizePhone,
+  dedupeRows,
 };

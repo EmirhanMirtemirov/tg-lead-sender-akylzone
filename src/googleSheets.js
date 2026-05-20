@@ -1,6 +1,7 @@
 "use strict";
 
 const { google } = require("googleapis");
+const { normalizePhone } = require("./parser");
 
 function escapeDriveQueryValue(value) {
   return String(value).replace(/\\/g, "\\\\").replace(/'/g, "\\'");
@@ -79,7 +80,23 @@ async function appendLeadRows(client, config, rows) {
   });
 }
 
+// Column E holds the phone number; used to skip leads already in the sheet.
+async function readExistingPhones(client, config) {
+  const sheet = String(config.sheetRange).split("!")[0];
+  const response = await client.sheets.spreadsheets.values.get({
+    spreadsheetId: client.spreadsheetId,
+    range: `${sheet}!E:E`,
+  });
+
+  const phones = new Set();
+  for (const row of response.data.values || []) {
+    if (row[0]) phones.add(normalizePhone(row[0]));
+  }
+  return phones;
+}
+
 module.exports = {
   createSheetsClient,
   appendLeadRows,
+  readExistingPhones,
 };

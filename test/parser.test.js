@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseLeadMessage, normalizePhone } = require("../src/parser");
+const { parseLeadMessage, normalizePhone, dedupeRows } = require("../src/parser");
 
 const sample = `🆘 Агент собрал необходимые данные!
 📡 Канал: instagram
@@ -58,4 +58,22 @@ test("normalizes common Kyrgyzstan phone formats", () => {
 test("normalizes common Russian phone formats", () => {
   assert.equal(normalizePhone("89991234567"), "+7 999 123-45-67");
   assert.equal(normalizePhone("+79991234567"), "+7 999 123-45-67");
+});
+
+test("dedupeRows drops phones already in the sheet and repeats within the batch", () => {
+  const existing = new Set([normalizePhone("0550404536")]);
+  const row = (phone) => ["", "t", "instagram", "Не указано", phone, "7", "ctx"];
+  const rows = [
+    row("+996 550 404 536"), // already in the sheet
+    row("+996 222 222 222"), // new
+    row("+996 222 222 222"), // duplicate within the batch
+    row("0707000000"), // new
+  ];
+
+  const { unique, duplicates } = dedupeRows(rows, existing);
+
+  assert.equal(unique.length, 2);
+  assert.equal(duplicates, 2);
+  assert.equal(unique[0][4], "+996 222 222 222");
+  assert.equal(unique[1][4], "0707000000");
 });
