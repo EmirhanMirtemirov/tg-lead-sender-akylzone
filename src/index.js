@@ -89,11 +89,11 @@ async function handleLeadPost(message, config, sheets) {
   console.log(`[ok] appended lead ${lead.phone} / ${lead.grade}`);
 }
 
-function handlePrivateDryRunMessage(message) {
+async function handlePrivateLead(message, config, sheets) {
   const lead = parseLeadMessage(textOf(message));
 
   if (!lead.isComplete) {
-    console.log("[dry-run] private message is not a complete lead", {
+    console.log("[skip] private message is not a complete lead", {
       phone: Boolean(lead.phone),
       grade: Boolean(lead.grade),
       time: Boolean(lead.time),
@@ -102,7 +102,13 @@ function handlePrivateDryRunMessage(message) {
     return;
   }
 
-  console.log("[dry-run] parsed private test row:", lead.row);
+  if (config.dryRun) {
+    console.log("[dry-run] parsed private row:", lead.row);
+    return;
+  }
+
+  await appendLeadRow(sheets, config, lead.row);
+  console.log(`[ok] appended forwarded lead ${lead.phone} / ${lead.grade}`);
 }
 
 async function main() {
@@ -132,11 +138,11 @@ async function main() {
       return;
     }
 
-    if (chatType === "private" && config.dryRun) {
+    if (chatType === "private") {
       try {
-        handlePrivateDryRunMessage(ctx.message);
+        await handlePrivateLead(ctx.message, config, sheets);
       } catch (error) {
-        console.error("[error] failed to handle private test message:", error);
+        console.error("[error] failed to handle private message:", error);
       }
     }
   });
